@@ -17,7 +17,7 @@ def natural_keys(text):
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("-q", help = "only shows the final stats", action='store_true')
-    parser.add_argument("--test-folder", help = "the folder of the tests to run", default = settings.NUMBER_DIR)
+    parser.add_argument("--test-folder", help = "the folder of the tests to run", required = True)
     parser.add_argument("--engine-location", help = "the location of javascript engine", required = True, default = "")
 
     if len(sys.argv) <= 1:
