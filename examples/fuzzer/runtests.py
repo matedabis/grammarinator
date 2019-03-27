@@ -5,7 +5,6 @@ import argparse
 import subprocess
 import re
 import glob
-import settings
 from colors import _bcolors
 
 def convert_if_int(text):
@@ -39,7 +38,7 @@ def run_tests(options):
     test_folder = os.path.abspath(options.test_folder) # The absolute path of test folder
     engine_location = os.path.abspath(options.engine_location) # The absolute path of engine location
     os.chdir(options.test_folder)
-    test_files = glob.glob("*.js") # Files to test
+    test_files = glob.glob("jerry_test_*.js") # Files to test
 
     if (not test_files):
         sys.exit(10)

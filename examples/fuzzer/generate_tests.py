@@ -6,6 +6,15 @@ import os
 import argparse
 import subprocess
 import glob
+import re
+
+# Utility function for sorting
+def natural_keys(text):
+    return [ convert_if_int(c) for c in re.split('(\d+)', text) ]
+
+def convert_if_int(text):
+    return int(text) if text.isdigit() else text
+
 
 # Class for generating grammar based tests
 class GenerateTests:
@@ -60,16 +69,73 @@ class GenerateTests:
         # Generating test cases
         self.bash_command = "grammarinator-generate -l %s -p %s -r %s -d %d" % (self.unlexer, self.unparser,
         options.starter_element, options.depth_count)
-        self.bash_command += " -o ./examples/tests/grammarinator_tests_%%d.js -n %d" % (options.test_count)
+        self.bash_command += " -o %s/grammarinator_tests_%%d.js -n %d" % (options.test_folder, options.test_count)
         print("\n" + self.bash_command + "\n")
+        self.process = subprocess.Popen(self.bash_command.split()) # Executing the command
+        self.process.communicate() # Waiting for process to terminate
+
+    # Create test cases for V8 with print statements
+    def make_print_statements(self, options):
+        test_count = 0 # Counter for v8_test filename
+        # For all the files in the test folder if it is a grammarinator generated test
+        for file in os.listdir(options.test_folder):
+             filename = os.fsdecode(file)
+             if filename.startswith("grammarinator_tests_"):
+                 test_count += 1
+                 # Open grammarinator generated test
+                 with open (os.path.join(options.test_folder, file)) as grammarinator_testfile:
+                    data = grammarinator_testfile.read()
+                    # Write first half of JerryScript tests
+                    with open (os.path.join(options.test_folder, "jerry_test_%d.js" % test_count), "w") as jerry_test:
+
+                         jerry_test.write("assert((%s" % data)
+                    # Write V8 testfile
+                    v8_testfile = os.path.join(options.test_folder, "v8_test_%d.js" % test_count)
+                    with open (os.path.join(v8_testfile), "w") as v8_test:
+                        v8_test.write("print(%s);" % data)
+
+    def validate_in_v8(self, options):
+        test_count = 0 # Counter for v8_test filename
+        # For all the files in the test folder if it is a grammarinator generated test
+        os.chdir(options.test_folder)
+        v8_test_files = glob.glob("v8_test_*.js") # Files to test
+        v8_test_files.sort(key = natural_keys)
+        print(v8_test_files)
+        os.chdir(os.path.join(self.this_dir, "../.."))
+        for file in v8_test_files:
+             test_count += 1
+             with open (os.path.join(options.test_folder, "jerry_test_%d.js" % test_count), "a") as jerry_test:
+                 self.bash_command = "%s %s" % (options.v8_location, os.path.join(options.test_folder, file))
+                 # os.path.join(options.test_folder, "jerry_test_%d.js" % test_count)
+                 print("\n" + self.bash_command + "\n")
+                 result = subprocess.check_output(self.bash_command.split()) # Executing the command
+                 if result.decode('utf-8').strip() == "NaN":
+                     jerry_test.write(") !== ")
+                 else:
+                     jerry_test.write(") === ")
+                 jerry_test.write("%s);" % result.decode('utf-8').strip())
+                 print(result.decode('utf-8').strip())
+
+
+
+
+    def run_tests_in_jerry(self, options):
+        self.runtestpy = os.path.join(self.this_dir, "runtests.py")
+        self.bash_command = "%s --engine-location %s --test-folder %s" % (self.runtestpy, options.jerry_location,
+        options.test_folder)
         self.process = subprocess.Popen(self.bash_command.split()) # Executing the command
         self.process.communicate() # Waiting for process to terminate
 
     # Generate tests
     def generate_tests(self, options):
-        # Building JerryScript if needed
+        # Generate grammarinator tests
         self.run_grammarinator(options)
-
+        # Make print statements to make V8 output capturable
+        self.make_print_statements(options)
+        # Evaluate tests in v8, and create JerryScript tests according to the output
+        self.validate_in_v8(options)
+        # Run the generated tests in JerryScript
+        self.run_tests_in_jerry(options)
 
 def main():
     generator = GenerateTests()
