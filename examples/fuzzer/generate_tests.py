@@ -5,17 +5,22 @@ import os
 import subprocess
 import glob
 import re
+import datetime
 
 # Local imports
 import argparse
 import runtests
+from colors import _bcolors
 
 # Class for generating grammar based tests
 class GenerateTests:
     def __init__(self):
+        self.fail_count = 0
+        self.pass_count = 0
         self.fuzzer_dir = os.path.dirname(os.path.abspath(__file__))
         self.project_dir = os.path.normpath(os.path.join(self.fuzzer_dir, "..", ".."))
         self.test_folder = os.path.normpath(os.path.join(self.project_dir, "examples", "tests"))
+        self.failed_folder = os.path.normpath(os.path.join(self.project_dir, "examples", "failed"))
 
     # Getting the arguments
     def get_arguments(self):
@@ -46,8 +51,8 @@ class GenerateTests:
         if (not options.q):
             print(message)
 
-    # Run grammarinator
-    def run_grammarinator(self, options):
+    # Run grammarinator process (generate unlexer and unparser)
+    def run_grammarinator_process(self, options):
         self.debug(options.grammar_files, options)
         options.grammar_files = os.path.abspath(options.grammar_files)
         # Variables
@@ -62,6 +67,8 @@ class GenerateTests:
         self.process = subprocess.Popen(self.bash_command.split()) # Executing the command
         self.process.communicate() # Waiting for process to terminate
 
+    # Run grammarinator generate (generate grammarinator tests)
+    def run_grammarinator_generate(self, options):
         # Generating test cases
         self.bash_command = "grammarinator-generate -l %s -p %s -r %s -d %d" % (self.unlexer, self.unparser,
         options.starter_element, options.depth_count)
@@ -87,7 +94,7 @@ class GenerateTests:
                          jerry_test.write("assert((%s" % data)
                     # Write V8 testfile
                     v8_testfile = os.path.join(self.test_folder, "v8_test_%d.js" % test_count)
-                    with open (os.path.join(v8_testfile), "w") as v8_test:
+                    with open (v8_testfile, "w") as v8_test:
                         v8_test.write("print(%s);" % data)
 
     def validate_in_v8(self, options):
@@ -115,9 +122,32 @@ class GenerateTests:
                  jerry_test.write("%s);" % result.decode('utf-8').strip())
                  self.debug(result.decode('utf-8').strip(), options)
 
-    def run_tests_in_jerry(self, options):
-        options.q = True
-        return runtests.run_tests(options)
+    def run_tests_in_jerry_and_collect_failed_tests(self, options):
+        # Run tests in JerryScript
+        run_data = runtests.run_tests(options)
+        failed_filenames = run_data["failed_filenames"]
+        # If there are failed tests
+        if len(failed_filenames):
+            # If there is no failed folder, create one
+            if not os.path.isdir(self.failed_folder):
+                os.makedirs(self.failed_folder)
+
+            file_count = 0
+            # Iterate trough files
+            for file in os.listdir(self.test_folder):
+                file_count += 1
+                filename = os.fsdecode(file)
+                # If it is a failed test
+                if filename in failed_filenames:
+                    # Open it and read data
+                    with open (os.path.join(self.test_folder, filename), "r") as failed:
+                        data = failed.read()
+                        # And copy it to a time marked .js file
+                        with open (os.path.join(self.failed_folder,
+                        "%s.js") % datetime.datetime.now().isoformat(), "w") as failed_test:
+                            failed_test.write(data)
+        # Return pass and fail count
+        return [run_data["pass"], run_data["fail"]]
 
     def remove_test_dir(self, options):
         # Remove test directory
@@ -131,20 +161,29 @@ class GenerateTests:
     def generate_tests(self, options):
         # While all tests pass
         loop_count = 0
+        # Generate unlexer and unparser
+        self.run_grammarinator_process(options)
+        # The process runs as long as we want it to run
         while True:
             loop_count += 1
             # Generate grammarinator tests
-            self.run_grammarinator(options)
+            self.run_grammarinator_generate(options)
             # Make print statements to make V8 output capturable
             self.make_print_statements(options)
             # Evaluate tests in v8, and create JerryScript tests according to the output
             self.validate_in_v8(options)
-            # Run the generated tests in JerryScript
-            if not self.run_tests_in_jerry(options):
-                 break
-            else:
-                self.remove_test_dir(options)
-            print("Test count : %d" % (options.test_count * loop_count))
+            # Run the generated tests in JerryScript and update counters
+            test_counts = self.run_tests_in_jerry_and_collect_failed_tests(options)
+            self.pass_count += test_counts[0]
+            self.fail_count += test_counts[1]
+            # Remove test directory
+            self.remove_test_dir(options)
+            # Print information about completed tests
+            print("\n%sTest count:\t%d%s" % (_bcolors.okblue, self.pass_count + self.fail_count, _bcolors.endc))
+            pass_percentage = (self.pass_count * 100.0) / (self.pass_count + self.fail_count)
+            fail_percentage = (self.fail_count * 100.0) / (self.pass_count + self.fail_count)
+            print("%sPass count:\t%d\t%f %%%s" % (_bcolors.okgreen, self.pass_count, pass_percentage, _bcolors.endc))
+            print("%sFail count:\t%d\t%f %%%s" % (_bcolors.fail, self.fail_count, fail_percentage, _bcolors.endc))
 
 
 def main():

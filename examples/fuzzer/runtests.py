@@ -49,6 +49,8 @@ def run_tests(options):
 
     debug("%s\nTest\t\t\tExit code\n%s" % (_bcolors.okblue, _bcolors.endc), options)
 
+    failed_filenames = []
+
     for filename in test_files:
         test_file = os.path.join(test_folder, filename)
         p = subprocess.Popen([engine_location, test_file], stderr = open(os.devnull, 'w'))
@@ -60,15 +62,16 @@ def run_tests(options):
         else:
             color = _bcolors.fail
             fail_count += 1
+            failed_filenames.append(filename)
         debug("%s%s   \t%d%s" % (color , filename, p.returncode, _bcolors.endc), options)
 
 
     pass_percentage = (pass_count * 100.0) / test_count
     fail_percentage = (fail_count * 100.0) / test_count
 
-    print("\n%sPASS:\t%d\t%f %%%s" % (_bcolors.okgreen, pass_count, pass_percentage, _bcolors.endc))
-    print("%sFAIL:\t%d\t%f %%%s" % (_bcolors.fail, fail_count, fail_percentage, _bcolors.endc))
+    debug("\n%sPASS:\t%d\t%f %%%s" % (_bcolors.okgreen, pass_count, pass_percentage, _bcolors.endc), options)
+    debug("%sFAIL:\t%d\t%f %%%s" % (_bcolors.fail, fail_count, fail_percentage, _bcolors.endc), options)
 
     os.chdir(generator.project_dir)
 
-    return pass_percentage == 100
+    return {"failed_filenames" : failed_filenames, "pass" : pass_count, "fail" : fail_count}

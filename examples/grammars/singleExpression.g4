@@ -184,38 +184,37 @@ grammar singleExpression;
 grammar singleExpression;
 
 singleExpression
- : singleExpression '+' singleExpression                                                   /// UnaryPlusExpression
- | singleExpression '-' singleExpression                                                   /// UnaryMinusExpression
- | '(' '~' singleExpression ')'                                               /// BitNotExpression
- | '(' '!' singleExpression ')'                                               /// NotExpression
- | singleExpression '*' singleExpression
- | singleExpression '/' singleExpression
- | singleExpression '%' singleExpression                                      /// MultiplicativeExpression
- | singleExpression '+' singleExpression
- | singleExpression '-' singleExpression                                      /// AdditiveExpression
- | singleExpression '<<' singleExpression
- | singleExpression '>>' singleExpression
- | singleExpression '>>>' singleExpression              /// BitShiftExpression
- | singleExpression '<'  singleExpression          /// RelationalExpression
- | singleExpression '>'  singleExpression          /// RelationalExpression
- | singleExpression '<=' singleExpression          /// RelationalExpression
- | singleExpression '>=' singleExpression          /// RelationalExpression
- | singleExpression '==' singleExpression
- | singleExpression '!=' singleExpression
- | singleExpression '===' singleExpression
- | singleExpression '!==' singleExpression      /// EqualityExpression
- | singleExpression '&' singleExpression                                      /// BitAndExpression
- | singleExpression '^' singleExpression                                      /// BitXOrExpression
- | singleExpression '|' singleExpression                                      /// BitOrExpression
- | singleExpression '&&' singleExpression                                     /// LogicalAndExpression
- | singleExpression '||' singleExpression                                     /// LogicalOrExpression
- | '(' singleExpression ')'                                                   /// ParenthesizedExpression
- | DecimalIntegerLiteral
- | {6}? DecimalIntegerLiteral 
- | 'null'
- | 'true'
- | 'false'
- | 'undefined'
+ : {2}? singleExpression '+' singleExpression                                                   /// UnaryPlusExpression
+ | {2}? singleExpression '-' singleExpression                                                   /// UnaryMinusExpression
+ | {2}? '(' '~' singleExpression ')'                    /// BitNotExpression
+ | {2}? '(' '!' singleExpression ')'                    /// NotExpression
+ | {2}? singleExpression '*' singleExpression
+ | {2}? singleExpression '/' singleExpression
+ | {2}? singleExpression '%' singleExpression           /// MultiplicativeExpression
+ | {2}? singleExpression '+' singleExpression
+ | {2}? singleExpression '-' singleExpression           /// AdditiveExpression
+ | {2}? singleExpression '<<' singleExpression
+ | {2}? singleExpression '>>' singleExpression
+ | {2}? singleExpression '>>>' singleExpression         /// BitShiftExpression
+ | {2}? singleExpression '<'  singleExpression          /// RelationalExpression
+ | {2}? singleExpression '>'  singleExpression          /// RelationalExpression
+ | {2}? singleExpression '<=' singleExpression          /// RelationalExpression
+ | {2}? singleExpression '>=' singleExpression          /// RelationalExpression
+ | {2}? singleExpression '==' singleExpression
+ | {2}? singleExpression '!=' singleExpression
+ | {2}? singleExpression '===' singleExpression
+ | {2}? singleExpression '!==' singleExpression           /// EqualityExpression
+ | {2}? singleExpression '&' singleExpression             /// BitAndExpression
+ | {2}? singleExpression '^' singleExpression             /// BitXOrExpression
+ | {2}? singleExpression '|' singleExpression             /// BitOrExpression
+ | {2}? singleExpression '&&' singleExpression            /// LogicalAndExpression
+ | {2}? singleExpression '||' singleExpression            /// LogicalOrExpression
+ | {2}? '(' singleExpression ')'                          /// ParenthesizedExpression
+ | {200}? DecimalIntegerLiteral
+ | {1}? 'null'
+ | {1}? 'true'
+ | {1}? 'false'
+ | {1}? 'undefined'
  ;
 
  fragment DecimalIntegerLiteral
