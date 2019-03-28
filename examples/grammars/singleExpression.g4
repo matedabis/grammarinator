@@ -211,11 +211,7 @@ singleExpression
  | singleExpression '||' singleExpression                                     /// LogicalOrExpression
  | '(' singleExpression ')'                                                   /// ParenthesizedExpression
  | DecimalIntegerLiteral
- | DecimalIntegerLiteral
- | DecimalIntegerLiteral
- | DecimalIntegerLiteral
- | DecimalIntegerLiteral
- | DecimalIntegerLiteral
+ | {6}? DecimalIntegerLiteral 
  | 'null'
  | 'true'
  | 'false'

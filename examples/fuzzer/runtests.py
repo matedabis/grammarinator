@@ -6,6 +6,7 @@ import subprocess
 import re
 import glob
 from colors import _bcolors
+import generate_tests
 
 def convert_if_int(text):
     return int(text) if text.isdigit() else text
@@ -32,12 +33,13 @@ def debug(message, options):
       print(message)
 
 def run_tests(options):
+    generator = generate_tests.GenerateTests()
     test_count = 0 # The count of tests run
     fail_count = 0 # The count of failed tests
     pass_count = 0 # The count of passed tests
-    test_folder = os.path.abspath(options.test_folder) # The absolute path of test folder
-    engine_location = os.path.abspath(options.engine_location) # The absolute path of engine location
-    os.chdir(options.test_folder)
+    test_folder = os.path.abspath(generator.test_folder) # The absolute path of test folder
+    engine_location = os.path.abspath(options.jerry_location) # The absolute path of engine location
+    os.chdir(generator.test_folder)
     test_files = glob.glob("jerry_test_*.js") # Files to test
 
     if (not test_files):
@@ -67,4 +69,6 @@ def run_tests(options):
     print("\n%sPASS:\t%d\t%f %%%s" % (_bcolors.okgreen, pass_count, pass_percentage, _bcolors.endc))
     print("%sFAIL:\t%d\t%f %%%s" % (_bcolors.fail, fail_count, fail_percentage, _bcolors.endc))
 
-run_tests(get_arguments())
+    os.chdir(generator.project_dir)
+
+    return pass_percentage == 100
