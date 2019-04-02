@@ -29,11 +29,12 @@ logging.basicConfig(format='%(message)s')
 
 class Population(object):
 
-    def __init__(self, directory):
+    def __init__(self, directory, seed):
         self.directory = directory
         self.tree_extension = Tree.extension
         os.makedirs(directory, exist_ok=True)
         self.obj_list = glob.glob(join(self.directory, '*' + Tree.extension))
+        random.seed(seed)
 
     def random_individuals(self, n=1):
         return random.sample(self.obj_list, n)
@@ -49,9 +50,8 @@ class Population(object):
 class Generator(object):
 
     def __init__(self, unlexer_path, unparser_path, rule, out_format, max_depth=float('inf'), cooldown=1.0,
-                 population=None, generate=True, mutate=True, recombine=True, keep_trees=False,
-                 tree_transformers=None, test_transformers=None,
-                 cleanup=True, encoding='utf-8'):
+                 seed=random.SystemRandom(), population=None, generate=True, mutate=True, recombine=True,
+                 keep_trees=False, tree_transformers=None, test_transformers=None, cleanup=True, encoding='utf-8'):
 
         def import_entity(name):
             steps = name.split('.')
@@ -83,13 +83,15 @@ class Generator(object):
 
         self.max_depth = float(max_depth)
         self.cooldown = float(cooldown)
-        self.population = Population(population) if population else None
+        self.seed = seed
+        self.population = Population(population, self.seed) if population else None
         self.enable_generation = get_boolean(generate)
         self.enable_mutation = get_boolean(mutate)
         self.enable_recombination = get_boolean(recombine)
         self.keep_trees = get_boolean(keep_trees)
         self.cleanup = get_boolean(cleanup)
         self.encoding = encoding
+        random.seed(self.seed)
 
         tree_transformers = tree_transformers or []
         if isinstance(tree_transformers, str):
@@ -241,6 +243,8 @@ def execute():
     parser.add_argument('-c', '--cooldown', default=1.0, type=restricted_float, metavar='NUM',
                         help='cool-down factor defines how much the probability of an alternative should decrease '
                              'after it has been chosen (interval: (0, 1]; default: %(default)f).')
+    parser.add_argument('-s', '--seed', default=random.SystemRandom(), type=int, metavar='NUM',
+                        help='defines the seed of random, set to random by default (every generating should be different)')
     # Evolutionary settings.
     parser.add_argument('--population', metavar='DIR',
                         help='directory of grammarinator tree pool.')
@@ -278,7 +282,7 @@ def execute():
         args.population = abspath(args.population)
 
     with Generator(unlexer_path=args.unlexer, unparser_path=args.unparser, rule=args.rule, out_format=args.out,
-                   max_depth=args.max_depth, cooldown=args.cooldown,
+                   max_depth=args.max_depth, cooldown=args.cooldown, seed=args.seed,
                    population=args.population, generate=args.generate, mutate=args.mutate, recombine=args.recombine, keep_trees=args.keep_trees,
                    tree_transformers=args.tree_transformers, test_transformers=args.test_transformers,
                    cleanup=False, encoding=args.encoding) as generator:
