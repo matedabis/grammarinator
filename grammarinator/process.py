@@ -434,6 +434,7 @@ class FuzzerGenerator(object):
             result = self.line('choice = self.choice([0 if {{{alt_name}}}[i] > self.unlexer.max_depth else w * self.unlexer.weights.get(({alt_name!r}, i), 1) for i, w in enumerate([{weights}])])'
                                .format(weights=', '.join('{{{cond_id}}}'.format(cond_id=cond_id) for cond_id, _ in conditions),
                                        alt_name=alt_name))
+            result += self.line('self.update_weights(alt_name={alt_name!r}, opt_len={opt_len}, choice=choice, cooldown=self.unlexer.cooldown)'.format(alt_name=alt_name, opt_len=len(children)))
             result += self.line('self.unlexer.weights[({alt_name!r}, choice)] = self.unlexer.weights.get(({alt_name!r}, choice), 1) * self.unlexer.cooldown'.format(alt_name=alt_name))
             for i, child in enumerate(children):
                 alternative_name = '{alt_name}_{idx}'.format(alt_name=alt_name, idx=i)

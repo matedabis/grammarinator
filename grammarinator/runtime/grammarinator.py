@@ -98,6 +98,13 @@ class Grammarinator(object):
             upto += w
         raise AssertionError('Shouldn\'t get here.')
 
+    def update_weights(self, alt_name, opt_len, choice, cooldown):
+        for i in range(0, opt_len):
+            if i != choice:
+                self.unlexer.weights[(alt_name, i)] = 1
+            else:
+                self.unlexer.weights[(alt_name, i)] = cooldown
+
     def zero_or_one(self):
         if self.random_decision():
             yield
