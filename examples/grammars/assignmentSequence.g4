@@ -7,7 +7,6 @@ random.seed(1)
 
 @lexer::header {
 import random
-from singleExpressionUnparser import singleExpressionUnparser
 random.seed(1)
 }
 
@@ -30,7 +29,7 @@ assignmentSequence
 ;
 
 AssignmentExpression
- : LeftHandSideExpression AssignmentOperator AssignmentExpression
+ : LeftHandSideExpression AssignmentOperator '(' AssignmentExpression ')'
  | LeftHandSideExpression AssignmentOperator DecimalIntegerLiteral
  ;
 
@@ -60,33 +59,37 @@ singleExpressionTest
  : 'print(' singleExpression ');'
  ;
 
+DecimalIntegerLiteralTest
+ : 'print(' DecimalIntegerLiteral ');'
+ ;
+
  singleExpression
- : {5}? singleExpression '+' singleExpression                                                   /// UnaryPlusExpression
- | {5}? singleExpression '-' singleExpression                                                   /// UnaryMinusExpression
- | {5}? '(' '~' singleExpression ')'                    /// BitNotExpression
- | {5}? '(' '!' singleExpression ')'                    /// NotExpression
+ : {5}? singleExpression '+' singleExpression
+ | {5}? singleExpression '-' singleExpression
+ | {5}? '(' '~' singleExpression ')'
+ | {5}? '(' '!' singleExpression ')'
  | {5}? singleExpression '*' singleExpression
- | {5}? singleExpression '/' singleExpression
- | {5}? singleExpression '%' singleExpression           /// MultiplicativeExpression
+ | {5}? 'Math.round(' singleExpression '/' singleExpression ')'
+ | {5}? 'Math.round(' singleExpression '%' singleExpression ')'
  | {5}? singleExpression '+' singleExpression
- | {5}? singleExpression '-' singleExpression           /// AdditiveExpression
+ | {5}? singleExpression '-' singleExpression
  | {5}? singleExpression '<<' singleExpression
  | {5}? singleExpression '>>' singleExpression
- | {5}? singleExpression '>>>' singleExpression         /// BitShiftExpression
- | {5}? singleExpression '<'  singleExpression          /// RelationalExpression
- | {5}? singleExpression '>'  singleExpression          /// RelationalExpression
- | {5}? singleExpression '<=' singleExpression          /// RelationalExpression
- | {5}? singleExpression '>=' singleExpression          /// RelationalExpression
+ | {5}? singleExpression '>>>' singleExpression
+ | {5}? singleExpression '<'  singleExpression
+ | {5}? singleExpression '>'  singleExpression
+ | {5}? singleExpression '<=' singleExpression
+ | {5}? singleExpression '>=' singleExpression
  | {5}? singleExpression '==' singleExpression
  | {5}? singleExpression '!=' singleExpression
  | {5}? singleExpression '===' singleExpression
- | {5}? singleExpression '!==' singleExpression           /// EqualityExpression
- | {5}? singleExpression '&' singleExpression             /// BitAndExpression
- | {5}? singleExpression '^' singleExpression             /// BitXOrExpression
- | {5}? singleExpression '|' singleExpression             /// BitOrExpression
- | {5}? singleExpression '&&' singleExpression            /// LogicalAndExpression
- | {5}? singleExpression '||' singleExpression            /// LogicalOrExpression
- | {5}? '(' singleExpression ')'                          /// ParenthesizedExpression
+ | {5}? singleExpression '!==' singleExpression
+ | {5}? singleExpression '&' singleExpression
+ | {5}? singleExpression '^' singleExpression
+ | {5}? singleExpression '|' singleExpression
+ | {5}? singleExpression '&&' singleExpression
+ | {5}? singleExpression '||' singleExpression
+ | {5}? '(' singleExpression ')'
  | {10}? DecimalIntegerLiteral
  | {1}? 'null'
  | {1}? 'true'
@@ -96,7 +99,7 @@ singleExpressionTest
 
  fragment DecimalIntegerLiteral
  : '0'
- | [1-9] DecimalDigit* DecimalDigit* DecimalDigit*
+ | [1-9] DecimalDigit*
  ;
 
  fragment DecimalDigit

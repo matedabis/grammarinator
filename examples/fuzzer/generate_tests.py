@@ -130,8 +130,10 @@ class GenerateTests:
                  else:
                      jerry_test.write(") === ")
                  jerry_test.write("%s);" % result_v8.decode('utf-8').strip())
-                 self.debug(result_v8.decode('utf-8').strip(), options)
-                 self.debug(result_jerry.decode('utf-8').strip(), options)
+                 with open (os.path.join(self.test_folder, file)) as gramm_file:
+                     jerry_test.write("\n/*\n%s\n*/" % gramm_file.read())
+                     self.debug(result_v8.decode('utf-8').strip(), options)
+                     self.debug(result_jerry.decode('utf-8').strip(), options)
 
     def run_tests_in_jerry_and_collect_failed_tests(self, options):
         # Run tests in JerryScript
