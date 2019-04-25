@@ -196,7 +196,7 @@ breakStatement
   ;
 
  catchProduction
-  : Catch '(' 'identifier' ')' block
+  : Catch '(' 'error' ')' block
   ;
 
  finallyProduction
@@ -262,22 +262,14 @@ iterationStatement
  Safety_break : '\n' {current += self.create_node(UnlexerRule(name='Loop_count_declaration', src=self.get_loop_varname()))} '++;\nif(' {current += self.create_node(UnlexerRule(name='Loop_count_declaration', src=self.get_loop_varname()))} '> 1000) break;\n';
  Print_loop : '\nprint(loop_count_1)';
 
-/* Identifier
+Identifier
  : IdentifierStart IdentifierPart*
- ; */
-
-/* variableDeclarationList
- : variableDeclaration ( ',' variableDeclaration )*
  ;
-
-variableDeclaration
- : Identifier initialiser?
- ; */
 
 initialiser
  : '=' singleExpression
  ;
-/*
+
 fragment HexDigit
   : [0-9a-fA-F]
   ;
@@ -705,10 +697,14 @@ fragment UnicodeConnectorPunctuation
   | [\uFF65]
   ;
 
+fragment UnicodeEscapeSequence
+ : 'u' HexDigit HexDigit HexDigit HexDigit
+ ;
+
 fragment ZWNJ
   : '\u200C'
   ;
 
 fragment ZWJ
   : '\u200D'
-  ; */
+  ;
