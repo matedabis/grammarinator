@@ -2,12 +2,10 @@ grammar assignmentSequence;
 
 @header {
 import random
-random.seed(1)
 }
 
 @lexer::header {
 import random
-random.seed(1)
 }
 
 @parser::member {
@@ -22,6 +20,7 @@ def get_varname(self):
 @lexer::member {
 call_count = 0
 loop_count = 0
+max_safe_integer = 9007199254740991
 
 def get_varname_lefthand(self):
     return 'var_%d' % random.randint(1, 5)
@@ -31,6 +30,9 @@ def get_loop_varname(self):
       self.loop_count += 1
     self.call_count += 1
     return 'loop_count_%d' % self.loop_count
+
+def generate_safe_integer(self):
+    return str(random.randint(- self.max_safe_integer, self.max_safe_integer))
 }
 
 assignmentSequence
@@ -108,8 +110,7 @@ DecimalIntegerLiteralTest
  ;
 
  fragment DecimalIntegerLiteral
- : '0'
- | [1-9] DecimalDigit*
+ : '(' {current += self.create_node(UnlexerRule(name='generate_safe_integer', src=self.generate_safe_integer()))} ')'
  ;
 
  fragment DecimalDigit
@@ -203,12 +204,6 @@ breakStatement
   : Finally block
   ;
 
-
-   /*
-   | labelledStatement
-   | throwStatement
-   */
-
  expressionStatement
   : expressionSequence ';'
   ;
@@ -226,9 +221,6 @@ iterationStatement
  | Loop_count_declaration For '(' Var ' ' (declaration_wo_semicolon_o_var ', ')* declaration_wo_semicolon_o_var ';' expressionSequence? ';' expressionSequence? ')' '{'Safety_break statement'}' # ForVarStatement
  | Loop_count_declaration Do '{' Safety_break statement '}' While '(' expressionSequence ')' # DoStatement
  ;
-
-/* iterationStatement
- ; */
 
  /// 7.6.1.1 Keywords
  Break      : 'break';

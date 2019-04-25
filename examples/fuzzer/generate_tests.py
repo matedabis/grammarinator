@@ -31,7 +31,9 @@ class GenerateTests:
         parser.add_argument("--test-count", help = "Number of tests to generate per starter element", type = int,
         default = 50)
         parser.add_argument("--depth-count", help = "Number of tests to generate", type = int,
-        default = 20)
+        default = 10)
+        parser.add_argument("--seed", help = "Initialize random number generator with fixed seed", type = int,
+        default = 1000)
         parser.add_argument("--unlex-unpar-loc", help = "the folder to unlexer and unparser",
         required = True)
         parser.add_argument("--v8-location", help = "the location of the V8 engine",
@@ -74,7 +76,12 @@ class GenerateTests:
         for start_element in options.starter_element:
             self.bash_command = "grammarinator-generate -l %s -p %s -r %s -d %d" % (self.unlexer, self.unparser,
             start_element, options.depth_count)
-            self.bash_command += " -o %s/grammarinator_tests_%%d.js -n %d" % (self.test_folder, options.test_count)
+            # Different directories for different types of tests
+            test_type_folder = os.path.join(self.test_folder, start_element)
+            if not os.path.isdir(test_type_folder):
+                os.makedirs(test_type_folder)
+            self.bash_command += " -o %s/grammarinator_tests_%%d.js -n %d --random-seed %d -j 1" % (test_type_folder,
+            options.test_count, options.seed)
             self.debug("\n" + self.bash_command + "\n", options)
             self.process = subprocess.Popen(self.bash_command.split()) # Executing the command
             self.process.communicate() # Waiting for process to terminate
@@ -82,85 +89,104 @@ class GenerateTests:
     # Create test cases for V8 with print statements
     def make_print_statements(self, options):
         test_count = 0 # Counter for v8_test filename
-        # For all the files in the test folder if it is a grammarinator generated test
-        for file in os.listdir(self.test_folder):
-             filename = os.fsdecode(file)
-             if filename.startswith("grammarinator_tests_"):
-                 test_count += 1
-                 # Open grammarinator generated test
-                 with open (os.path.join(self.test_folder, file)) as grammarinator_testfile:
-                    data = grammarinator_testfile.read()
-                    # Write first half of JerryScript tests
-                    with open (os.path.join(self.test_folder, "jerry_test_%d.js" % test_count), "w") as jerry_test:
+        # For all the folders in the test folder
+        for start_element in options.starter_element:
+            test_type_folder = os.path.join(self.test_folder, start_element)
+            # For all the files in the test folder if it is a grammarinator generated test
+            for file in os.listdir(test_type_folder):
+                 filename = os.fsdecode(file)
+                 if filename.startswith("grammarinator_tests_"):
+                     test_count += 1
+                     # Open grammarinator generated test
+                     with open (os.path.join(test_type_folder, file)) as grammarinator_testfile:
+                        data = grammarinator_testfile.read()
+                        # Write first half of JerryScript tests
+                        with open (os.path.join(test_type_folder, "jerry_test_%d.js" % test_count), "w") as jerry_test:
 
-                         jerry_test.write("assert((")
-                    # # Write V8 testfile
-                    # v8_testfile = os.path.join(self.test_folder, "v8_test_%d.js" % test_count)
-                    # with open (v8_testfile, "w") as v8_test:
-                    #     v8_test.write("print(%s);" % data)
+                             jerry_test.write("assert((")
+                        # # Write V8 testfile
+                        # v8_testfile = os.path.join(self.test_folder, "v8_test_%d.js" % test_count)
+                        # with open (v8_testfile, "w") as v8_test:
+                        #     v8_test.write("print(%s);" % data)
 
     def validate(self, options):
         test_count = 0 # Counter for jerry_test filename
         # For all the files in the test folder if it is a grammarinator generated test
-        # Change to test directory
-        os.chdir(self.test_folder)
 
-        v8_test_files = glob.glob("grammarinator_tests_*.js") # Files to test
-        v8_test_files.sort(key = runtests.natural_keys)
+        for start_element in options.starter_element:
+            test_type_folder = os.path.join(self.test_folder, start_element)
+            # Change to test directory
+            os.chdir(test_type_folder)
+            self.debug("\n" + test_type_folder + "\n", options)
 
-        # Change back to project directory
-        os.chdir(self.project_dir)
+            v8_test_files = glob.glob("grammarinator_tests_*.js") # Files to test
+            v8_test_files.sort(key = runtests.natural_keys)
+            self.debug("\n" + str(v8_test_files) + "\n", options)
 
-        for file in v8_test_files:
-             test_count += 1
-             with open (os.path.join(self.test_folder, "jerry_test_%d.js" % test_count), "a") as jerry_test:
+            # Change back to project directory
+            os.chdir(self.project_dir)
 
-                 # Calculate in v8
-                 self.bash_command = "%s %s" % (options.v8_location, os.path.join(self.test_folder, file))
-                 self.debug("\n" + self.bash_command + "\n", options)
-                 result_v8 = subprocess.check_output(self.bash_command.split()) # Executing the command
+            for file in v8_test_files:
+                 file = os.path.join(test_type_folder, file)
+                 test_count += 1
+                 with open (os.path.join(test_type_folder, "jerry_test_%d.js" % test_count), "a") as jerry_test:
 
-                 # Calculate in JerryScript
-                 self.bash_command = "%s %s" % (options.jerry_location, os.path.join(self.test_folder, file))
-                 self.debug("\n" + self.bash_command + "\n", options)
-                 result_jerry = subprocess.check_output(self.bash_command.split()) # Executing the command
-                 jerry_test.write("%s" % result_jerry.decode('utf-8').strip())
-                 if result_v8.decode('utf-8').strip() == "NaN":
-                     jerry_test.write(") !== ")
-                 else:
-                     jerry_test.write(") === ")
-                 jerry_test.write("%s);" % result_v8.decode('utf-8').strip())
-                 with open (os.path.join(self.test_folder, file)) as gramm_file:
-                     jerry_test.write("\n/*\n%s\n*/" % gramm_file.read())
-                     self.debug(result_v8.decode('utf-8').strip(), options)
-                     self.debug(result_jerry.decode('utf-8').strip(), options)
+                     # Calculate in v8
+                     self.bash_command = "%s %s" % (options.v8_location, os.path.join(test_type_folder, file))
+                     self.debug("\n" + self.bash_command + "\n", options)
+                     result_v8 = subprocess.check_output(self.bash_command.split()) # Executing the command
+
+                     # Calculate in JerryScript
+                     self.bash_command = "%s %s" % (options.jerry_location, os.path.join(test_type_folder, file))
+                     self.debug("\n" + self.bash_command + "\n", options)
+                     result_jerry = subprocess.check_output(self.bash_command.split()) # Executing the command
+                     jerry_test.write("%s" % result_jerry.decode('utf-8').strip())
+                     if result_v8.decode('utf-8').strip() == "NaN":
+                         jerry_test.write(") !== ")
+                     else:
+                         jerry_test.write(") === ")
+                     jerry_test.write("%s);" % result_v8.decode('utf-8').strip())
+                     with open (os.path.join(test_type_folder, file)) as gramm_file:
+                         jerry_test.write("\n/*\n%s\n*/" % gramm_file.read())
+                         self.debug(result_v8.decode('utf-8').strip(), options)
+                         self.debug(result_jerry.decode('utf-8').strip(), options)
 
     def run_tests_in_jerry_and_collect_failed_tests(self, options):
         # Run tests in JerryScript
-        run_data = runtests.run_tests(options)
-        failed_filenames = run_data["failed_filenames"]
-        # If there are failed tests
-        if len(failed_filenames):
-            # If there is no failed folder, create one
-            if not os.path.isdir(self.failed_folder):
-                os.makedirs(self.failed_folder)
+        # For all types of tests
+        self.run_data = {"pass" : 0, "fail" : 0}
+        for start_element in options.starter_element:
+            test_type_folder = os.path.join(self.test_folder, start_element)
+            run_options = options
+            # Add test folder to run_options for runtests.py
+            run_options.test_folder = test_type_folder
+            self.debug(run_options.test_folder, options)
+            run_data = runtests.run_tests(run_options)
+            self.run_data["pass"] += run_data["pass"]
+            self.run_data["fail"] += run_data["fail"]
+            failed_filenames = run_data["failed_filenames"]
+            # If there are failed tests
+            if len(failed_filenames):
+                # If there is no failed folder, create one
+                if not os.path.isdir(self.failed_folder):
+                    os.makedirs(self.failed_folder)
 
-            file_count = 0
-            # Iterate trough files
-            for file in os.listdir(self.test_folder):
-                file_count += 1
-                filename = os.fsdecode(file)
-                # If it is a failed test
-                if filename in failed_filenames:
-                    # Open it and read data
-                    with open (os.path.join(self.test_folder, filename), "r") as failed:
-                        data = failed.read()
-                        # And copy it to a time marked .js file
-                        with open (os.path.join(self.failed_folder,
-                        "%s.js") % datetime.datetime.now().isoformat(), "w") as failed_test:
-                            failed_test.write(data)
+                file_count = 0
+                # Iterate trough files
+                for file in os.listdir(test_type_folder):
+                    file_count += 1
+                    filename = os.fsdecode(file)
+                    # If it is a failed test
+                    if filename in failed_filenames:
+                        # Open it and read data
+                        with open (os.path.join(test_type_folder, filename), "r") as failed:
+                            data = failed.read()
+                            # And copy it to a time marked .js file
+                            with open (os.path.join(self.failed_folder,
+                            "%s.js") % datetime.datetime.now().isoformat(), "w") as failed_test:
+                                failed_test.write(data)
         # Return pass and fail count
-        return [run_data["pass"], run_data["fail"]]
+        return [self.run_data["pass"], self.run_data["fail"]]
 
     def remove_test_dir(self, options):
         # Remove test directory
@@ -172,31 +198,24 @@ class GenerateTests:
 
     # Generate tests
     def generate_tests(self, options):
-        # While all tests pass
-        loop_count = 0
         # Generate unlexer and unparser
         self.run_grammarinator_process(options)
-        # The process runs as long as we want it to run
-        while True:
-            loop_count += 1
-            # Generate grammarinator tests
-            self.run_grammarinator_generate(options)
-            # Make print statements to make V8 output capturable
-            self.make_print_statements(options)
-            # Evaluate tests in v8, and create JerryScript tests according to the output
-            self.validate(options)
-            # Run the generated tests in JerryScript and update counters
-            test_counts = self.run_tests_in_jerry_and_collect_failed_tests(options)
-            self.pass_count += test_counts[0]
-            self.fail_count += test_counts[1]
-            # Remove test directory
-            self.remove_test_dir(options)
-            # Print information about completed tests
-            print("\n%sTest count:\t%d%s" % (_bcolors.okblue, self.pass_count + self.fail_count, _bcolors.endc))
-            pass_percentage = (self.pass_count * 100.0) / (self.pass_count + self.fail_count)
-            fail_percentage = (self.fail_count * 100.0) / (self.pass_count + self.fail_count)
-            print("%sPass count:\t%d\t%f %%%s" % (_bcolors.okgreen, self.pass_count, pass_percentage, _bcolors.endc))
-            print("%sFail count:\t%d\t%f %%%s" % (_bcolors.fail, self.fail_count, fail_percentage, _bcolors.endc))
+        # Generate grammarinator tests
+        self.run_grammarinator_generate(options)
+        # Make print statements to make V8 output capturable
+        self.make_print_statements(options)
+        # Evaluate tests in v8, and create JerryScript tests according to the output
+        self.validate(options)
+        # Run the generated tests in JerryScript and update counters
+        test_counts = self.run_tests_in_jerry_and_collect_failed_tests(options)
+        self.pass_count += test_counts[0]
+        self.fail_count += test_counts[1]
+        # Print information about completed tests
+        print("\n%sTest count:\t%d%s" % (_bcolors.okblue, self.pass_count + self.fail_count, _bcolors.endc))
+        pass_percentage = (self.pass_count * 100.0) / (self.pass_count + self.fail_count)
+        fail_percentage = (self.fail_count * 100.0) / (self.pass_count + self.fail_count)
+        print("%sPass count:\t%d\t%f %%%s" % (_bcolors.okgreen, self.pass_count, pass_percentage, _bcolors.endc))
+        print("%sFail count:\t%d\t%f %%%s" % (_bcolors.fail, self.fail_count, fail_percentage, _bcolors.endc))
 
 
 def main():

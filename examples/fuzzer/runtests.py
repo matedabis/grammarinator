@@ -37,9 +37,9 @@ def run_tests(options):
     test_count = 0 # The count of tests run
     fail_count = 0 # The count of failed tests
     pass_count = 0 # The count of passed tests
-    test_folder = os.path.abspath(generator.test_folder) # The absolute path of test folder
+    test_folder = os.path.abspath(options.test_folder) # The absolute path of test folder
     engine_location = os.path.abspath(options.jerry_location) # The absolute path of engine location
-    os.chdir(generator.test_folder)
+    os.chdir(test_folder)
     test_files = glob.glob("jerry_test_*.js") # Files to test
 
     if (not test_files):
